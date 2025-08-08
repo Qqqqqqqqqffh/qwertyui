@@ -1,0 +1,10 @@
+
+*.o
+
+*.txt
+result.json
+
+*_stdout.txt
+*_stderr.txt
+
+benchmark-artifacts/
