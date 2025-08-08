@@ -11,10 +11,6 @@
 #include <cstring>
 
 namespace fs = std::filesystem;
-std::string username = "github_runner"; 
-if (argc > 1) {
-    username = argv[1];
-}
 
 std::string generate_json(const std::string& username, double gen_time, double sort_time, bool sorted) {
     std::stringstream json;
@@ -42,7 +38,6 @@ bool is_valid_username(const std::string& username) {
     return true;
 }
 
-
 bool is_sorted(const std::vector<double>& numbers) {
     for (size_t i = 0; i < numbers.size() - 1; ++i) {
         if (numbers[i] > numbers[i + 1]) {
@@ -53,8 +48,8 @@ bool is_sorted(const std::vector<double>& numbers) {
 }
 
 int main(int argc, char* argv[]) {
-    // Установка никнейма по умолчанию
 
+    std::string username = "github_runner";  
     if (argc > 1) {
         username = argv[1];
     }
@@ -67,7 +62,6 @@ int main(int argc, char* argv[]) {
 
     const size_t N = 100000;
     std::vector<double> numbers(N);
-    
 
     auto start_gen = std::chrono::high_resolution_clock::now();
     std::random_device rd;
@@ -87,12 +81,11 @@ int main(int argc, char* argv[]) {
 
     fs::create_directories("results");
     
-
     std::string filename = "results/" + username + ".json";
-  
     std::ofstream out(filename);
     out << generate_json(username, gen_time, sort_time, sorted);
     out.close();
+
     std::cout << "Results saved to: " << filename << "\n";
     std::cout << "Generation time: " << std::fixed << std::setprecision(4) << gen_time << " ms\n";
     std::cout << "Sorting time: " << sort_time << " ms\n";
