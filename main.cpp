@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+
+#include <iomanip>
+#include <cstring>
 #include <random>
 #include <sstream>
 #include <filesystem>
 #include <cctype>
-#include <iomanip>
-#include <cstring>
-
 namespace fs = std::filesystem;
 
 std::string generate_json(const std::string& username, double gen_time, double sort_time, bool sorted) {
