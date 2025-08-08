@@ -1,6 +1,4 @@
-#include <iostream>
-#include <vector>
-#include <algorithm>
+
 #include <chrono>
 #include <fstream>
 #include <random>
@@ -9,7 +7,9 @@
 #include <cctype>
 #include <iomanip>
 #include <cstring>
-
+#include <iostream>
+#include <vector>
+#include <algorithm>
 namespace fs = std::filesystem;
 
 std::string generate_json(const std::string& username, double gen_time, double sort_time, bool sorted) {
