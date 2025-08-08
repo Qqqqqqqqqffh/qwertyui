@@ -1,0 +1,39 @@
+name: update-leaderboard
+
+permissions:
+  contents: write
+  actions: read
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Каждый час
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install Python dependencies
+      run: pip install matplotlib tabulate
+
+    - name: Generate leaderboard
+      run: python3 leaderboard.py
+
+    - name: Commit and push changes
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add LEADERBOARD.md leaderboard.png
+        git commit -m "Update leaderboard $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+        git push
