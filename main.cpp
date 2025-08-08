@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+
+#include <cstring>
 #include <random>
 #include <sstream>
 #include <filesystem>
 #include <cctype>
 #include <iomanip>
-#include <cstring>
-
 namespace fs = std::filesystem;
 std::string username = "github_runner"; 
 if (argc > 1) {
