@@ -1,128 +1,106 @@
-import sqlite3
-from datetime import datetime
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import json
+import matplotlib
+matplotlib.use('Agg')  # Важно для работы без GUI
 import matplotlib.pyplot as plt
-from tabulate import tabulate
+import os
+import numpy as np
 
-def init_db():
-    conn = sqlite3.connect('leaderboard.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS benchmark_results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            generation_time REAL NOT NULL,
-            sorting_time REAL NOT NULL,
-            total_time REAL NOT NULL,
-            correctly_sorted BOOLEAN NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
+def load_data():
+    """Загружаем данные из JSON-файлов"""
+    data = []
+    for filename in os.listdir('results'):
+        if filename.endswith('.json'):
+            path = os.path.join('results', filename)
+            try:
+                with open(path) as f:
+                    file_data = json.load(f)
+                    file_data['filename'] = filename
+                    data.append(file_data)
+            except json.JSONDecodeError:
+                print(f"Ошибка чтения JSON в файле: {filename}")
+            except Exception as e:
+                print(f"Ошибка при обработке файла {filename}: {str(e)}")
+    return data
 
-def generate_leaderboard():
-    print("="*60)
-    print("🏆 Starting Code Execution Leaderboard Generation")
-    print("="*60)
-  
-    init_db()
-    conn = sqlite3.connect('leaderboard.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT username, 
-               generation_time/1000 as generation_time_s,
-               sorting_time/1000 as sorting_time_s,
-               total_time/1000 as total_time_s,
-               correctly_sorted
-        FROM benchmark_results
-        ORDER BY total_time
-    ''')
-    sorted_results = [
-        {
-            'username': row[0],
-            'generation_time': row[1]*1000,
-            'sorting_time': row[2]*1000,
-            'total_time': row[3]*1000,
-            'generation_time_s': row[1],
-            'sorting_time_s': row[2],
-            'total_time_s': row[3],
-            'correctly_sorted': row[4]
-        }
-        for row in cursor.fetchall()
-    ]
-    conn.close()
+def generate_leaderboard(data):
+    """Генерируем leaderboard и сохраняем графики"""
+    if not data:
+        print("Нет данных для генерации leaderboard")
+        return
     
-    if not sorted_results:
-        print("❌ No results found in database. Creating sample data...")
-        sorted_results = [
-            {
-                "username": "sample_user", 
-                "generation_time": 15230, 
-                "sorting_time": 25410,
-                "total_time": 40640,
-                "correctly_sorted": True,
-                "total_time_s": 40.64,
-                "generation_time_s": 15.23,
-                "sorting_time_s": 25.41
-            }
-        ]
-
-    leaderboard_md = "# 🏆 Code Execution Leaderboard\n\n"
-    leaderboard_md += "Rank | Username | Total Time (s) | Generation (s) | Sorting (s) | Correctly Sorted\n"
-    leaderboard_md += "-----|----------|----------------|----------------|-------------|-----------------\n"
+    # Сортируем по времени сортировки (чем быстрее - тем лучше)
+    sorted_data = sorted(data, key=lambda x: x.get('sorting_time', float('inf')))
     
-    for i, result in enumerate(sorted_results, 1):
-        status_icon = "✅" if result['correctly_sorted'] else "❌"
-        leaderboard_md += (
-            f"{i} | {result['username']} | {result['total_time_s']:.2f} | "
-            f"{result['generation_time_s']:.2f} | {result['sorting_time_s']:.2f} | "
-            f"{status_icon}\n"
-        )
+    # Подготавливаем данные для графика
+    names = [entry['filename'].replace('.json', '') for entry in sorted_data]
+    times = [entry.get('sorting_time', 0) for entry in sorted_data]
+    total_times = [entry.get('total_time', 0) for entry in sorted_data]
     
-    if sorted_results:
-        usernames = [result['username'] for result in sorted_results]
-        total_times = [result['total_time_s'] for result in sorted_results]
+    # Создаем график
+    plt.figure(figsize=(12, 8))
+    
+    # График времени сортировки
+    plt.subplot(2, 1, 1)
+    bars = plt.bar(names, times, color='skyblue')
+    plt.ylabel('Время сортировки (мс)')
+    plt.title('Сравнение времени сортировки алгоритмов')
+    plt.xticks(rotation=45, ha='right')
+    
+    # Добавляем значения на столбцах
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height,
+                 f'{height:.2f}', 
+                 ha='center', va='bottom', rotation=0, fontsize=8)
+    
+    # График общего времени
+    plt.subplot(2, 1, 2)
+    bars_total = plt.bar(names, total_times, color='lightgreen')
+    plt.ylabel('Общее время (мс)')
+    plt.title('Сравнение общего времени выполнения')
+    plt.xticks(rotation=45, ha='right')
+    
+    # Добавляем значения на столбцах
+    for bar in bars_total:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height,
+                 f'{height:.2f}', 
+                 ha='center', va='bottom', rotation=0, fontsize=8)
+    
+    # Настраиваем расположение и сохраняем
+    plt.tight_layout()
+    plt.savefig('leaderboard.png')
+    print("Leaderboard сгенерирован и сохранен как leaderboard.png")
+    
+    # Создаем текстовый рейтинг без использования tabulate
+    with open('leaderboard.txt', 'w') as f:
+        f.write("Рейтинг алгоритмов сортировки\n")
+        f.write("=" * 50 + "\n")
+        f.write(f"{'Место':<6} {'Алгоритм':<20} {'Время сортировки (мс)':<20} {'Общее время (мс)':<15}\n")
+        f.write("-" * 50 + "\n")
         
-        plt.figure(figsize=(14, 8))
-        bars = plt.barh(usernames, total_times, color='skyblue')
-        plt.xlabel('Total Time (s)')
-        plt.title('Code Execution Leaderboard (Lower is Better)')
-        plt.gca().invert_yaxis()
+        for i, entry in enumerate(sorted_data, 1):
+            name = entry['filename'].replace('.json', '')[:20]  # Ограничение длины имени
+            sort_time = entry.get('sorting_time', 0)
+            total_time = entry.get('total_time', 0)
+            f.write(f"{i:<6} {name:<20} {sort_time:<20.2f} {total_time:<15.2f}\n")
         
-        for bar in bars:
-            width = bar.get_width()
-            plt.text(width + 0.5, bar.get_y() + bar.get_height()/2, 
-                     f'{width:.2f}s', 
-                     ha='left', va='center')
-        
-        plt.tight_layout()
-        plt.savefig('leaderboard.png')
-        print("\n📊 Generated leaderboard.png visualization")
+        f.write("\nПримечание: Сортировка по времени сортировки (от быстрех к медленным)\n")
     
-    with open("LEADERBOARD.md", "w") as f:
-        f.write(leaderboard_md)
-    
-    print("\n" + "="*60)
-    print(f"🏁 Leaderboard generation complete! Top performer: {sorted_results[0]['username']}")
-    print(f"  - Total time: {sorted_results[0]['total_time_s']:.2f}s")
-    print("="*60)
-
-def save_to_db(username, result_data):
-    conn = sqlite3.connect('leaderboard.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO benchmark_results 
-        (username, generation_time, sorting_time, total_time, correctly_sorted)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (
-        username,
-        result_data['generation_time'],
-        result_data['sorting_time'],
-        result_data['total_time'],
-        result_data['correctly_sorted']
-    ))
-    conn.commit()
-    conn.close()
+    print("Текстовый рейтинг сохранен как leaderboard.txt")
 
 if __name__ == "__main__":
-    generate_leaderboard()
+    # Проверяем существование папки с результатами
+    if not os.path.exists('results'):
+        print("Ошибка: Папка 'results' не найдена")
+        exit(1)
+    
+    # Загружаем данные и генерируем leaderboard
+    data = load_data()
+    if data:
+        generate_leaderboard(data)
+    else:
+        print("Нет данных для обработки")
