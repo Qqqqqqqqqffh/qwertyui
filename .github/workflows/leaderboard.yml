@@ -1,37 +1,92 @@
-name: update-leaderboard
+import json
+import matplotlib
+matplotlib.use('Agg')  # Важно для работы без GUI
+import matplotlib.pyplot as plt
+import os
+import numpy as np
 
-permissions:
-  contents: write
-  actions: read
+def load_data():
+    """Загружаем данные из JSON-файлов"""
+    results = []
+    for filename in os.listdir('results'):
+        if filename.endswith('.json'):
+            try:
+                with open(f'results/{filename}') as f:
+                    data = json.load(f)
+                    data['name'] = filename.replace('.json', '')
+                    results.append(data)
+            except Exception as e:
+                print(f"Ошибка при загрузке {filename}: {str(e)}")
+    return results
 
-on:
-  schedule:
-    - cron: '0 * * * *'  # Каждый час
-  workflow_dispatch:
+def generate_leaderboard(data):
+    """Генерируем leaderboard"""
+    if not data:
+        print("Нет данных для генерации leaderboard")
+        return
+    
+    # Сортируем по времени сортировки
+    sorted_data = sorted(data, key=lambda x: x['sorting_time'])
+    
+    # Подготовка данных для графиков
+    names = [d['name'] for d in sorted_data]
+    sorting_times = [d['sorting_time'] for d in sorted_data]
+    total_times = [d['total_time'] for d in sorted_data]
+    
+    # Создаем график
+    plt.figure(figsize=(14, 10))
+    
+    # График времени сортировки
+    plt.subplot(2, 1, 1)
+    bars = plt.bar(names, sorting_times, color='skyblue')
+    plt.title('Время сортировки алгоритмов')
+    plt.ylabel('Время (мс)')
+    plt.xticks(rotation=45, ha='right')
+    
+    # Добавляем значения на столбцах
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, height,
+                 f'{height:.2f}', ha='center', va='bottom')
+    
+    # График общего времени выполнения
+    plt.subplot(2, 1, 2)
+    bars_total = plt.bar(names, total_times, color='lightgreen')
+    plt.title('Общее время выполнения')
+    plt.ylabel('Время (мс)')
+    plt.xticks(rotation=45, ha='right')
+    
+    # Добавляем значения на столбцах
+    for bar in bars_total:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, height,
+                 f'{height:.2f}', ha='center', va='bottom')
+    
+    # Сохраняем график
+    plt.tight_layout()
+    plt.savefig('leaderboard.png')
+    print("График leaderboard сохранен как leaderboard.png")
+    
+    # Создаем текстовый отчет
+    with open('leaderboard.txt', 'w') as f:
+        f.write("Рейтинг алгоритмов сортировки\n")
+        f.write("=============================\n\n")
+        f.write("Место | Алгоритм          | Время сортировки (мс) | Общее время (мс)\n")
+        f.write("------|-------------------|------------------------|-----------------\n")
+        
+        for i, entry in enumerate(sorted_data, 1):
+            f.write(f"{i:5} | {entry['name']:17} | {entry['sorting_time']:21.2f} | {entry['total_time']:15.2f}\n")
+        
+        f.write("\nПримечание: Сортировка по времени сортировки (от быстрех к медленным)\n")
+    
+    print("Текстовый отчет сохранен как leaderboard.txt")
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-
-    - name: Install dependencies
-      run: |
-        pip install matplotlib tabulate
-
-    - name: Generate leaderboard
-      run: python3 leaderboard.py
-
-    - name: Commit and push changes
-      run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
-        git add LEADERBOARD.md leaderboard.png
-        git commit -m "Update leaderboard $(date '+%Y-%m-%d %H:%M:%S')" || echo "Нет изменений для коммита"
-        git push
+if __name__ == "__main__":
+    # Проверяем существование папки с результатами
+    if not os.path.exists('results'):
+        print("Ошибка: Папка 'results' не найдена")
+        exit(1)
+    
+    # Загружаем данные и генерируем leaderboard
+    data = load_data()
+    generate_leaderboard(data)
