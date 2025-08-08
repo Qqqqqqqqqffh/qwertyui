@@ -19,6 +19,13 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
 
+    - name: Install Python dependencies
+      run: |
+        pip install matplotlib numpy pandas
+    
+    - name: Generate Leaderboard
+      run: python3 leaderboard.py
+        
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
